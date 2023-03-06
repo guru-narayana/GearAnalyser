@@ -22,11 +22,11 @@ class servo():
         def select_port(self,index):
                 self.nano = serial.Serial('COM9', 9600, timeout=1)
                 time.sleep(4)                
-        def turn_30(self):
+        def turn_20(self):
                 if(self.nano == None):
                         print("select the port")
                         return
-                self.nano.write(str.encode('30'))
+                self.nano.write(str.encode('20'))
                 time.sleep(1)
 
 
@@ -36,4 +36,7 @@ if __name__=="__main__":
         s = servo()
         s.get_ports()
         s.select_port(4)
-        s.turn_30()
+        while(True):
+                x = input()
+                if(x=="1"):
+                        s.turn_20()

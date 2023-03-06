@@ -7,10 +7,9 @@ import numpy as np
 from camera_caliberation import caliberate_device
 
 class image_processor:
-    def __init__(self,frame,using_CAD_Image = False) -> None:
+    def __init__(self,using_CAD_Image = False) -> None:
         # Parameters
         self.__gear_cnt = [] # contour sorrouning the gear
-        self.frame = frame
         self.is_CAD_Image = using_CAD_Image
         self.gear_center = [0,0]
         self.outside_diameter = 0
@@ -21,25 +20,28 @@ class image_processor:
         self.gear_local_mins = []
         self.gear_teeth_errs = []
         self.pixel2mm = 0
-
-        self.image_with_edges = frame*0 + 37
-        self.image_with_errors = self.image_with_edges
+        self.edge_thickness = 2
 
         # ERROR FLAGS
         self.NO_GEAR_ERROR = False
         self.CENTER_CALCULATION_ERROR = False
         self.IMAGE_PROCESSED = False
-        self.PIXEL2MM_UNSET = False
+        self.PIXEL2MM_UNSET = True
 
         # Tunable parameters
         self.adaptiveThresholdKernel = 901
         self.savgolWindowLength  = 7
 
+    def set_frame(self,frame):
+        self.frame = frame
+        self.image_with_edges = frame*0 + 37
+        self.image_with_errors = self.image_with_edges
+
     def process(self,savgolWindowLength=None):
         self.NO_GEAR_ERROR = False
         self.CENTER_CALCULATION_ERROR = False
         self.IMAGE_PROCESSED = False
-        self.PIXEL2MM_UNSET = False
+        self.PIXEL2MM_UNSET = True
         if len(self.frame.shape)==3:
             gray = cv2.cvtColor(self.frame,cv2.COLOR_BGR2GRAY)
         else:
@@ -54,7 +56,7 @@ class image_processor:
             area = cv2.contourArea(cnt)
             if(area>max_area and not (area >= gray.shape[1]*gray.shape[0]*0.9)): # getting the contour with maximum area
                 self.__gear_cnt,max_area = cnt,area
-        cv2.drawContours(self.image_with_edges, self.__gear_cnt, -1, (255, 255, 255), 1)
+        cv2.drawContours(self.image_with_edges, self.__gear_cnt, -1, (255, 255, 255), self.edge_thickness)
         M = cv2.moments(self.__gear_cnt)
         if M['m00'] != 0:
             self.gear_center[0] = int(M['m10']/M['m00'])
@@ -108,7 +110,7 @@ class image_processor:
             err =  self.gear_teeth_errs[-1]
             red = (0,0,min(err*200*100/threshold,255))
             cnt = np.concatenate((self.__gear_cnt[:self.gear_local_mins[0]],self.__gear_cnt[self.gear_local_mins[-1]:]))
-            cv2.drawContours(self.image_with_errors, cnt, -1, red, 3)
+            cv2.drawContours(self.image_with_errors, cnt, -1, red, self.edge_thickness+2)
 
     def __normalize(self,arr):
         norm_arr = []
@@ -189,25 +191,26 @@ class image_processor:
         return seperator
 
 
-if(__name__ == "__main__"):
-    frame = cv2.imread("E:\Official_projects\Gear_analysis\src\data\Test_images\WIN_20230302_13_42_01_Pro.jpg")
-    frame2 = cv2.imread("E:\Official_projects\Gear_analysis\src\data\Test_images\Screenshot 2023-02-23 192615.png")
-    gear = image_processor(frame)
-    cad = image_processor(frame2,True)
-    cad.process()
+# if(__name__ == "__main__"):
+    # frame = cv2.imread("E:\Official_projects\Gear_analysis\src\data\Test_images\Final.png")
+    # # frame2 = cv2.imread("E:\Official_projects\Gear_analysis\src\data\Test_images\Screenshot 2023-02-23 192615.png")
+    # gear = image_processor(frame)
+    # gear.process()
+    # # cad = image_processor(frame2,True)
+    # # cad.process()
     
-    fram_arcuo = cv2.imread("E:\Official_projects\Gear_analysis\src\data\Test_images\img.jpg")
-    c = caliberate_device()
-    c.ids_order = [1,2]
-    c.heights = [10,15]
-    c.curve_order =1
-    param = c.caliberate(fram_arcuo)
+    # # fram_arcuo = cv2.imread("E:\Official_projects\Gear_analysis\src\data\Test_images\img.jpg")
+    # # c = caliberate_device()
+    # # c.ids_order = [1,2]
+    # # c.heights = [10,15]
+    # # c.curve_order =1
+    # # param = c.caliberate(fram_arcuo)
     
     
-    cad.set_pixel2mm(50)
-    gear.process()
-    gear.set_pixel2mm(50)
-    print(gear.pixel2mm)
-    gear.set_pixel2mm(12,param)
-    print(gear.pixel2mm)
-    gear.compare_with_cad(cad.get_profile_mm(),0.1)
+    # # cad.set_pixel2mm(50)
+    # # gear.process()
+    # # gear.set_pixel2mm(50)
+    # # print(gear.pixel2mm)
+    # # gear.set_pixel2mm(12,param)
+    # # print(gear.pixel2mm)
+    # # gear.compare_with_cad(cad.get_profile_mm(),0.1)
