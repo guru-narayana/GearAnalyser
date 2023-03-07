@@ -20,10 +20,13 @@ class Gear_analyser(customtkinter.CTk):
         self.width = 1100
         self.geometry(str(self.width)+"x"+str(self.height))
         self.resizable(False, False)
+        
 
 
         self.insert_tools()
         self.caliberator  = caliberate_device()
+        self.caliberation_params = None
+        self.original_image_processed = False
         self.processor = image_processor()
         self.cad_processor = image_processor(using_CAD_Image=True)
 
@@ -57,6 +60,7 @@ class Gear_analyser(customtkinter.CTk):
         self.using_camera = 1
         self.frame =  np.uint8(np.zeros((300,400,3)))
         self.processed_frame =np.uint8( np.zeros((300,400,3)))
+        self.cad_frame = np.uint8( np.zeros((300,400,3)))
         self.cap = cv2.VideoCapture(0,cv2.CAP_DSHOW)
         try:
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1600)
@@ -84,7 +88,7 @@ class Gear_analyser(customtkinter.CTk):
 
         ## processing
         self.using_height_switch_var = customtkinter.StringVar(value="off")
-        self.processing_frame = customtkinter.CTkFrame(master=self, width=230, height=150)
+        self.processing_frame = customtkinter.CTkFrame(master=self, width=230, height=180+70+13)
         self.processing_frame.place(x=10,y=60)
         self.process_label = customtkinter.CTkLabel(master=self, text="Process Image",width=60,height=25,fg_color=("white", "gray17"),font=("Heebo", 16))
         self.process_label.place(x=70, y=60)
@@ -101,21 +105,178 @@ class Gear_analyser(customtkinter.CTk):
         self.diam_height_mm_entry = customtkinter.CTkEntry(master=self, placeholder_text="value in mm",width=90)
         self.diam_height_mm_entry.place(x=130, y=128)
 
-        self.process_image_btn = customtkinter.CTkButton(master=self, text="Process", command=self.process_image,font=("Heebo", 14),width=120)
-        self.process_image_btn.place(x=50,y=170)
+        self.savgol_switch_var = customtkinter.StringVar(value="off")
+        self.savgol_switch_1 = customtkinter.CTkSwitch(master=self, text="Savgol window : ", command=self.savgol_wntry_switch_event,
+                                   variable=self.savgol_switch_var, onvalue="on", offvalue="off")
+        self.savgol_switch_1.place(x=10, y=164)
 
+        self.savgol_entry = customtkinter.CTkEntry(master=self, placeholder_text="value",width=70)
+        self.savgol_entry.place(x=160, y=164)
+        self.savgol_entry.configure(state="disabled")
+
+        self.adaptiveThresholdKernel_switch_var = customtkinter.StringVar(value="off")
+        self.adaptiveThresholdKernel_switch_1 = customtkinter.CTkSwitch(master=self, text="adaptiveTKernel : ", command=self.adaptiveThresholdKernel_wntry_switch_event,
+                                   variable=self.adaptiveThresholdKernel_switch_var, onvalue="on", offvalue="off")
+        self.adaptiveThresholdKernel_switch_1.place(x=10, y=201)
+
+        self.adaptiveThresholdKernel_entry = customtkinter.CTkEntry(master=self, placeholder_text="901",width=70)
+        self.adaptiveThresholdKernel_entry.place(x=160, y=201)
+        self.adaptiveThresholdKernel_entry.configure(state="disabled")
+
+        self.process_image_btn = customtkinter.CTkButton(master=self, text="Process", command=self.process_image,font=("Heebo", 14),width=120)
+        self.process_image_btn.place(x=50,y=170+66+10)
+
+        self.caliberated = False
+        self.caliberate_image_btn = customtkinter.CTkButton(master=self, text="Caliberate", command=self.caliberate,font=("Heebo", 14),width=120)
+        self.caliberate_image_btn.place(x=50,y=206+66+10)
+
+        ### compare
+
+        self.cad_processing_frame = customtkinter.CTkFrame(master=self, width=230, height=205)
+        self.cad_processing_frame.place(x=10,y=250+70+10)
+        self.cad_process_label = customtkinter.CTkLabel(master=self, text="CAD",width=60,height=25,fg_color=("white", "gray17"),font=("Heebo", 16))
+        self.cad_process_label.place(x=85, y=255+70+10)
+        self.cad_browse_btn = customtkinter.CTkButton(master=self, text="Browse CAD image", command=self.browse_cad_image,font=("Heebo", 12),width=120)
+        self.cad_browse_btn.place(x=55,y=286+70+10)
+        self.cad_usingdiam_label = customtkinter.CTkLabel(master=self, text="CAD Diameter : ",width=60,height=25,fg_color=("white", "gray17"),font=("Heebo", 14))
+        self.cad_usingdiam_label.place(x=20, y=328+10+70)
+
+        self.cad_diam_mm_val = customtkinter.StringVar(value="0")
+        self.cad_diam_mm_entry = customtkinter.CTkEntry(master=self, placeholder_text="value in mm",width=90)
+        self.cad_diam_mm_entry.place(x=130, y=327+70+10)
+        self.cad_diam_mm_entry.configure(state="disabled")
+
+        self.usingerror_switch_var = customtkinter.StringVar(value="off")
+        self.usingerror_switch_1 = customtkinter.CTkSwitch(master=self, text="Set Accept. Error : ", command=self.compare_error_switch_event,
+                                   variable=self.usingerror_switch_var, onvalue="on", offvalue="off")
+        self.usingerror_switch_1.place(x=10, y=371+70+10)
+
+        self.cad_error_entry = customtkinter.CTkEntry(master=self, placeholder_text="% value",width=70)
+        self.cad_error_entry.place(x=160, y=371+70+10)
+        self.cad_error_entry.configure(state="disabled")
+
+        self.cad_compare_btn = customtkinter.CTkButton(master=self, text="Compare", command=self.cad_compare,font=("Heebo", 14),width=120)
+        self.cad_compare_btn.place(x=55,y=412+70+10)
+        self.cad_compare_btn.configure(state="disabled")
+
+
+
+        ## manual tuning
+
+        
+        ## stitch images
+
+
+    def adaptiveThresholdKernel_wntry_switch_event(self):
+        if(self.adaptiveThresholdKernel_switch_var.get()=="on"):
+            self.adaptiveThresholdKernel_entry.configure(state="normal")
+        else:
+            self.adaptiveThresholdKernel_entry.configure(state="disabled")
+
+    def savgol_wntry_switch_event(self):
+        if(self.savgol_switch_var.get()=="on"):
+            self.savgol_entry.configure(state="normal")
+        else:
+            self.savgol_entry.configure(state="disabled")
+
+    def compare_error_switch_event(self):
+        if(self.usingerror_switch_var.get()=="on"):
+            self.cad_error_entry.configure(state="normal")
+        else:
+            self.cad_error_entry.configure(state="disabled")
+
+    def browse_cad_image(self):
+        filename = filedialog.askopenfilename(initialdir = "/",
+                                        title = "Select a File",
+                                        filetypes = (("jpg","*.jpg*"),("png","*.png*")))
+        if(filename==""):
+            return
+        self.cad_frame = cv2.imread(filename)
+        self.cad_compare_btn.configure(state="normal")
+        self.cad_diam_mm_entry.configure(state="normal")
+
+    def cad_compare(self):
+        self.update_status(1)
+        if(not self.original_image_processed):
+            self.update_status(3,"Process Image")
+            return
+        self.cad_processor.set_frame(self.cad_frame)
+
+        if(self.adaptiveThresholdKernel_switch_var.get()=="on"):
+            self.cad_processor.adaptiveThresholdKernel  = int(self.adaptiveThresholdKernel_entry.get())
+        else:
+            self.cad_processor.adaptiveThresholdKernel = 901
+        
+        if(self.savgol_switch_var.get()=="on"):
+            self.cad_processor.process(float(self.savgol_entry.get()))
+        else:
+            self.cad_processor.process()
+        self.cad_processor.set_pixel2mm(float(self.cad_diam_mm_entry.get()))
+
+        if(self.cad_diam_mm_entry.get()==""):
+            self.update_status(3,"Enter Diameter")
+            return
+        
+        if(self.usingerror_switch_var.get()=="on"):
+            self.cad_compare_threshold = float(self.cad_error_entry.get())
+        else:
+            self.cad_compare_threshold = 5
+        self.processor.compare_with_cad(self.cad_processor.gear_teeth_profiles, self.cad_compare_threshold)
+        self.processed_frame =  self.processor.image_with_errors
+        self.update_status()
+        self.cad_compare_btn.configure(state="disabled")
+        self.cad_diam_mm_entry.configure(state="disabled")
+        self.cad_processor = image_processor(using_CAD_Image=True)
+        self.original_image_processed  = False
+
+    def caliberate(self):
+        ret,self.caliberation_params =  self.caliberator.caliberate(frame=self.frame)
+        if(not ret):
+            self.update_status(3,"Caliberation Fail")
+            self.caliberated = False
+            return
+        self.update_status()
+        self.caliberated = True
+        self.using_camera = 0
 
     def process_image(self):
+        self.processor = image_processor()
+        if(not self.caliberated and self.using_height_switch_var.get()=="on"):
+            self.update_status(3,"Caliberate !!")
+            return
         self.update_status(1)
-
         self.processor.set_frame(self.frame)
-        self.processor.process()
-        self.processed_frame = self.processor.image_with_edges
-        if( self.processor.NO_GEAR_ERROR and  self.processor.CENTER_CALCULATION_ERROR and  self.processor.IMAGE_PROCESSED):
-            self.update_status(2)
 
-        self.update_status(0)
+
+        if(self.adaptiveThresholdKernel_switch_var.get()=="on"):
+            self.processor.adaptiveThresholdKernel  = int(self.adaptiveThresholdKernel_entry.get())
+        else:
+            self.processor.adaptiveThresholdKernel = 901
+            
+
+        if(self.savgol_switch_var.get()=="on"):
+            self.processor.process(float(self.savgol_entry.get()))
+        else:
+            self.processor.process()
+
+        if( self.processor.NO_GEAR_ERROR):
+            self.update_status(3,"No Gear Detected")
+        if(self.processor.CENTER_CALCULATION_ERROR):
+            self.update_status(3,"Error in center")
+
+        if(self.diam_height_mm_entry.get() == ""):
+            self.update_status(3,"Enter value")
+            return
+        elif(self.using_height_switch_var.get()=="on"):
+            self.processor.set_pixel2mm(float(self.diam_height_mm_entry.get()),self.caliberation_params)
+        else:
+            self.processor.set_pixel2mm(float(self.diam_height_mm_entry.get()))
         
+        self.processed_frame = self.processor.image_with_edges
+        self.original_image_processed = True
+        self.using_camera = 0
+        self.update_status(0)      
+
     def height_switch_event(self):
         self.usingdiam_height_label.destroy()
         if(self.using_height_switch_var.get() == "on"):
@@ -133,6 +294,7 @@ class Gear_analyser(customtkinter.CTk):
             return
         self.frame = cv2.imread(filename)
         self.using_camera = 0
+        self.original_image_processed = False
 
     def save_original(self):        
         filename = filedialog.asksaveasfile(mode='w', defaultextension=".png", filetypes=(("PNG file", "*.png"),("All Files", "*.*") ))
@@ -188,7 +350,8 @@ class Gear_analyser(customtkinter.CTk):
             use_video_btn.place(x=540,y=20)
 
     def update_live(self):
-        self.frame = self.cap.read()[1]     
+        self.frame = self.cap.read()[1]
+        self.original_image_processed = False
 
     def convert_image(self,image):
         cv2image= cv2.resize(cv2.cvtColor(image,cv2.COLOR_BGR2RGB),(400,300))
@@ -196,7 +359,7 @@ class Gear_analyser(customtkinter.CTk):
         imgtk = PIL.ImageTk.PhotoImage(image = img)
         return imgtk
     
-    def update_status(self,status=0):
+    def update_status(self,status=0,txt=""):
         self.status_frame = customtkinter.CTkFrame(master=self, width=230, height=40)
         self.status_frame.place(x=10,y=10)
         self.status1_label = customtkinter.CTkLabel(master=self, text="Status : ",width=60,height=25,fg_color=("white", "gray17"),font=("Lao UI", 15))
@@ -210,6 +373,9 @@ class Gear_analyser(customtkinter.CTk):
             self.status_label.place(x=80, y=20)
         elif(status==2):
             self.status_label = customtkinter.CTkLabel(master=self, text="Failed !!",width=60,height=25,fg_color=("white", "gray17"),text_color=("red"),font=("Heebo", 19))
+            self.status_label.place(x=80, y=20)
+        elif(status==3):
+            self.status_label = customtkinter.CTkLabel(master=self, text=txt,width=60,height=25,fg_color=("white", "gray17"),text_color=("red"),font=("Heebo", 19))
             self.status_label.place(x=80, y=20)
 
     def loop(self):
