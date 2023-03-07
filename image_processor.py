@@ -73,6 +73,10 @@ class image_processor:
             self.pixel2mm = 0
             for i in range(len(calbrtn_param)):
                 self.pixel2mm += calbrtn_param[i]*k**(len(calbrtn_param)-1-i)
+        self.outside_diameter = self.outside_diameter*self.pixel2mm
+        self.root_diameter = self.pixel2mm*self.root_diameter
+        self.PIXEL2MM_UNSET = False
+
 
     def get_profile_mm(self):
         if(self.pixel2mm == 0):
@@ -80,7 +84,7 @@ class image_processor:
             return 0
         return self.gear_teeth_profiles*self.pixel2mm
 
-    def compare_with_cad(self,gear_profile = None,threshold = 10):
+    def compare_with_cad(self,gear_profile = None,threshold = 1):
         if(self.is_CAD_Image):
             print("Call compare from real gear image not cad")
             return

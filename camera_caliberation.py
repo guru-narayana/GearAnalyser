@@ -18,9 +18,9 @@ class caliberate_device:
         corners, ids, rejectedCandidates = cv2.aruco.detectMarkers(gray,dictionary,parameters=parameters)
         frame = cv2.aruco.drawDetectedMarkers(frame, corners, ids)
         d = []
-        if(len(ids)==0):
+        if(type(ids)==type(None)):
             sucess = 0
-            print("ERROR No ids detected")
+            return sucess,ids
         for i in range(len(ids)):
             c = corners[i][0]
             d.append( self.original_dimension/((dist(c[0], c[1]) +  dist(c[1], c[2])+ dist(c[2], c[3])+ dist(c[3], c[1]))/4))
