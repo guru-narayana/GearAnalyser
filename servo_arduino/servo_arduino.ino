@@ -2,7 +2,7 @@
 Servo myservo; 
 String inByte;
 int pos;
-
+unsigned long previousMillis = 0;
 void setup() {
  
   myservo.attach(5);
@@ -10,14 +10,17 @@ void setup() {
 }
 
 void loop()
-{    
+{
+  bool x  = false;
   if(Serial.available())
     { 
     inByte = Serial.readStringUntil('\n');
-    pos = inByte.toInt();          
-    myservo.write(2000);
-    delay(1.4*pos);
-    myservo.write(1500);
+    pos = inByte.toInt();
+    x = true;          
     }
+   if(x){
+    myservo.write(2000);
+    delay(1.6*pos);
+   }
     myservo.write(1500);
 }

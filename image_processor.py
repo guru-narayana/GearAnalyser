@@ -20,7 +20,7 @@ class image_processor:
         self.gear_local_mins = []
         self.gear_teeth_errs = []
         self.pixel2mm = 0
-        self.edge_thickness = 2
+        self.edge_thickness = 5
 
         # ERROR FLAGS
         self.NO_GEAR_ERROR = False

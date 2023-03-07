@@ -8,9 +8,11 @@ import numpy as np
 import os
 from camera_caliberation import caliberate_device
 from image_processor import image_processor
-
+from servo_control import servo
+from stitch_images import stitch_images_from_folder
 
 class Gear_analyser(customtkinter.CTk):
+
     def __init__(self):
         super().__init__()
 
@@ -20,6 +22,7 @@ class Gear_analyser(customtkinter.CTk):
         self.width = 1100
         self.geometry(str(self.width)+"x"+str(self.height))
         self.resizable(False, False)
+        self.myservo = servo()
         
 
 
@@ -35,6 +38,7 @@ class Gear_analyser(customtkinter.CTk):
 
     def insert_tools(self):
         self.update_status()
+        self.myservo = servo()
 
         ### setting up iamges and frames
         self.image_frame = customtkinter.CTkFrame(master=self, width=840, height=400)
@@ -72,7 +76,7 @@ class Gear_analyser(customtkinter.CTk):
         self.update_cameras_available()
 
         ### chosseing camera
-        update_btn = customtkinter.CTkButton(master=self, text="Update cameras", command=self.update_cameras_available,font=("Heebo", 14),width=120)
+        update_btn = customtkinter.CTkButton(master=self, text="Update Ports", command=self.update_cameras_available,font=("Heebo", 14),width=120)
         update_btn.place(x=270,y=20)
 
         ## image manipulation
@@ -108,19 +112,19 @@ class Gear_analyser(customtkinter.CTk):
         self.savgol_switch_var = customtkinter.StringVar(value="off")
         self.savgol_switch_1 = customtkinter.CTkSwitch(master=self, text="Savgol window : ", command=self.savgol_wntry_switch_event,
                                    variable=self.savgol_switch_var, onvalue="on", offvalue="off")
-        self.savgol_switch_1.place(x=10, y=164)
+        self.savgol_switch_1.place(x=10, y=167)
 
         self.savgol_entry = customtkinter.CTkEntry(master=self, placeholder_text="value",width=70)
-        self.savgol_entry.place(x=160, y=164)
+        self.savgol_entry.place(x=160, y=167)
         self.savgol_entry.configure(state="disabled")
 
         self.adaptiveThresholdKernel_switch_var = customtkinter.StringVar(value="off")
         self.adaptiveThresholdKernel_switch_1 = customtkinter.CTkSwitch(master=self, text="adaptiveTKernel : ", command=self.adaptiveThresholdKernel_wntry_switch_event,
                                    variable=self.adaptiveThresholdKernel_switch_var, onvalue="on", offvalue="off")
-        self.adaptiveThresholdKernel_switch_1.place(x=10, y=201)
+        self.adaptiveThresholdKernel_switch_1.place(x=10, y=204)
 
         self.adaptiveThresholdKernel_entry = customtkinter.CTkEntry(master=self, placeholder_text="901",width=70)
-        self.adaptiveThresholdKernel_entry.place(x=160, y=201)
+        self.adaptiveThresholdKernel_entry.place(x=160, y=204)
         self.adaptiveThresholdKernel_entry.configure(state="disabled")
 
         self.process_image_btn = customtkinter.CTkButton(master=self, text="Process", command=self.process_image,font=("Heebo", 14),width=120)
@@ -158,14 +162,65 @@ class Gear_analyser(customtkinter.CTk):
         self.cad_compare_btn = customtkinter.CTkButton(master=self, text="Compare", command=self.cad_compare,font=("Heebo", 14),width=120)
         self.cad_compare_btn.place(x=55,y=412+70+10)
         self.cad_compare_btn.configure(state="disabled")
-
-
-
-        ## manual tuning
-
         
         ## stitch images
 
+        self.stitch_processing_frame = customtkinter.CTkFrame(master=self, width=230, height=168)
+        self.stitch_processing_frame.place(x=10,y=545)
+
+        self.stitch_process_label = customtkinter.CTkLabel(master=self, text="Stitch Images",width=60,height=25,fg_color=("white", "gray17"),font=("Heebo", 16))
+        self.stitch_process_label.place(x=80, y=550)
+
+        self.servo_combobox = customtkinter.CTkOptionMenu(master=self,values = self.myservo.ports_dsc,command=self.servo_optionmenue_cb,font=("Heebo", 14),width=210,dynamic_resizing=False)
+        self.servo_combobox.place(x = 19,y =585)
+        self.servo_combobox.set(self.myservo.ports_dsc[-1])
+
+        self.stitch_save_btn = customtkinter.CTkButton(master=self, text="Save Images", command=self.stitch_save_images,font=("Heebo", 14),width=120)
+        self.stitch_save_btn.place(x=55,y=624)
+        self.stitch_save_btn.configure(state="disabled")
+
+        self.stitch_images_btn = customtkinter.CTkButton(master=self, text="Stitch Images", command=self.stitch_images,font=("Heebo", 14),width=120)
+        self.stitch_images_btn.place(x=55,y=660)
+
+
+
+    def stitch_images(self):
+        self.update_status(1)
+        self.update()
+        source_path = filedialog.askdirectory(title='Select the Parent Directory')
+        ret,image = stitch_images_from_folder(source_path)
+        if(not ret):
+            self.using_camera =0
+            self.frame = image
+            self.using_camera = 0
+            self.original_image_processed = FALSE
+        else:
+            self.update_status(3,"Stitch Failed !!")
+            return
+        self.update_status()
+
+    def stitch_save_images(self):
+        self.update_status(1)
+        source_path = filedialog.askdirectory(title='Select the Parent Directory')
+        path = os.path.join(source_path, 'StitchImages')
+        os.makedirs(path)
+        for i in range(25):
+            abs_path = path + "\Image" + str(i) + ".jpg"
+            cv2.imwrite(abs_path,self.frame)
+            imgtk = self.convert_image(self.frame)
+            self.original_image.imgtk = imgtk
+            self.original_image.configure(image=imgtk)
+            self.update()
+            self.update_live()
+            self.myservo.turn_20()
+        self.update_status()
+        
+    def servo_optionmenue_cb(self,choice):
+        self.update_status(1)
+        self.update()
+        self.myservo.select_port(self.myservo.ports_dsc.index(choice))
+        self.stitch_save_btn.configure(state="normal")
+        self.update_status()
 
     def adaptiveThresholdKernel_wntry_switch_event(self):
         if(self.adaptiveThresholdKernel_switch_var.get()=="on"):
@@ -245,6 +300,7 @@ class Gear_analyser(customtkinter.CTk):
             self.update_status(3,"Caliberate !!")
             return
         self.update_status(1)
+        self.update()
         self.processor.set_frame(self.frame)
 
 
@@ -324,9 +380,15 @@ class Gear_analyser(customtkinter.CTk):
         self.using_camera = 1
 
     def update_cameras_available(self):
+        self.update_status(1)
         index = 0
         arr = []
         self.cap.release()
+        self.myservo.get_ports()
+        try:
+            self.servo_combobox.configure(values = self.myservo.ports_dsc)
+        except:
+            pass
         while True:
             cap = cv2.VideoCapture(index,cv2.CAP_DSHOW)
             if not cap.read()[0]:
@@ -348,6 +410,7 @@ class Gear_analyser(customtkinter.CTk):
                 print("resolution not set")
             use_video_btn = customtkinter.CTkButton(master=self, text="Use video", command=self.use_video,font=("Heebo", 14),width=120)
             use_video_btn.place(x=540,y=20)
+        self.update_status(0)
 
     def update_live(self):
         self.frame = self.cap.read()[1]
