@@ -1,5 +1,5 @@
 import cv2
-from math import sqrt
+from math import sqrt,dist
 import matplotlib.pyplot as plt
 from scipy.signal import argrelmax,argrelmin,savgol_filter,resample,correlate
 from scipy.cluster.vq import kmeans, vq
@@ -7,6 +7,7 @@ import numpy as np
 from camera_caliberation import caliberate_device
 
 class image_processor:
+
     def __init__(self,using_CAD_Image = False) -> None:
         # Parameters
         self.__gear_cnt = [] # contour sorrouning the gear
@@ -14,6 +15,7 @@ class image_processor:
         self.gear_center = [0,0]
         self.outside_diameter = 0
         self.root_diameter = 0
+        self.pitch_diameter = 0
         self.gear_count = 0
         self.gear_dists = np.array([]) # distance of each contour point from the conter
         self.gear_teeth_profiles = []
@@ -21,6 +23,9 @@ class image_processor:
         self.gear_teeth_errs = []
         self.pixel2mm = 0
         self.edge_thickness = 5
+        self.dedundum_thickness_lst = []
+        self.apendum_thickness_lst = []
+        self.pitch_thickness_lst = []
 
         # ERROR FLAGS
         self.NO_GEAR_ERROR = False
@@ -36,6 +41,102 @@ class image_processor:
         self.frame = frame
         self.image_with_edges = frame*0 + 37
         self.image_with_errors = self.image_with_edges
+   
+    def get_teeth_metrices(self):
+        for i in range(len(self.gear_teeth_profiles)):
+            profile = self.gear_teeth_profiles[i]
+
+            ## calculation for dedenum thickness
+            indx1,indx2 = 0,0
+            flag1,flag2 = True,True
+            for j in range(len(profile)):
+                if (profile[j]*2*self.pixel2mm > 1.05*self.root_diameter and flag1):
+                    indx1 = j
+                    flag1 = False
+                if (profile[len(profile)-j-1]*2*self.pixel2mm > 1.05*self.root_diameter and flag2):
+                    indx2 = len(profile)-j-1
+                    flag2 = False
+            pos1,pos2 = 0,0
+            if(i == len(self.gear_teeth_profiles)-1):
+                if(indx1+self.gear_local_mins[-1]<len(self.gear_dists)):
+                    pos1 = self.__gear_cnt[indx1+self.gear_local_mins[-1]]
+                else:
+                    pos1 = self.__gear_cnt[indx1+self.gear_local_mins[-1]-len(self.gear_dists)]
+
+                if(indx2+self.gear_local_mins[-1]<len(self.gear_dists)):
+                    pos2 = self.__gear_cnt[indx2+self.gear_local_mins[-1]]
+                else:
+                    pos2 = self.__gear_cnt[indx2+self.gear_local_mins[-1]-len(self.gear_dists)]
+            else:
+                pos1 = self.__gear_cnt[self.gear_local_mins[i]+indx1]
+                pos2 = self.__gear_cnt[self.gear_local_mins[i]+indx2]
+            self.dedundum_thickness_lst.append(dist(pos1[0],pos2[0])*self.pixel2mm)
+
+            ## calculation for apendum thickness
+            indx1,indx2 = 0,0
+            flag1,flag2 = True,True
+            for j in range(len(profile)):
+                if (profile[j]*2*self.pixel2mm > 0.99*self.outside_diameter and flag1):
+                    indx1 = j
+                    flag1 = False
+                if (profile[len(profile)-j-1]*2*self.pixel2mm > 0.99*self.outside_diameter and flag2):
+                    indx2 = len(profile)-j-1
+                    flag2 = False
+            pos1,pos2 = 0,0
+
+            if(indx1 != 0 and indx2 != 0):
+                if(i == len(self.gear_teeth_profiles)-1):
+                    if(indx1+self.gear_local_mins[-1]<len(self.gear_dists)):
+                        pos1 = self.__gear_cnt[indx1+self.gear_local_mins[-1]]
+                    else:
+                        pos1 = self.__gear_cnt[indx1+self.gear_local_mins[-1]-len(self.gear_dists)]
+
+                    if(indx2+self.gear_local_mins[-1]<len(self.gear_dists)):
+                        pos2 = self.__gear_cnt[indx2+self.gear_local_mins[-1]]
+                    else:
+                        pos2 = self.__gear_cnt[indx2+self.gear_local_mins[-1]-len(self.gear_dists)]
+                else:
+                    pos1 = self.__gear_cnt[self.gear_local_mins[i]+indx1]
+                    pos2 = self.__gear_cnt[self.gear_local_mins[i]+indx2]
+                    
+                self.apendum_thickness_lst.append(dist(pos1[0],pos2[0])*self.pixel2mm)
+            else:
+                self.apendum_thickness_lst.append(0)
+
+            ## calculation for pitch thickness
+            indx1,indx2 = 0,0
+            flag1,flag2 = True,True
+            for j in range(len(profile)):
+                if (profile[j]*2*self.pixel2mm > 0.99*self.pitch_diameter and flag1):
+                    indx1 = j
+                    flag1 = False
+                if (profile[len(profile)-j-1]*2*self.pixel2mm > 0.99*self.pitch_diameter and flag2):
+                    indx2 = len(profile)-j-1
+                    flag2 = False
+            pos1,pos2 = 0,0
+
+            if(indx1 != 0 and indx2 != 0):
+                if(i == len(self.gear_teeth_profiles)-1):
+                    if(indx1+self.gear_local_mins[-1]<len(self.gear_dists)):
+                        pos1 = self.__gear_cnt[indx1+self.gear_local_mins[-1]]
+                    else:
+                        pos1 = self.__gear_cnt[indx1+self.gear_local_mins[-1]-len(self.gear_dists)]
+
+                    if(indx2+self.gear_local_mins[-1]<len(self.gear_dists)):
+                        pos2 = self.__gear_cnt[indx2+self.gear_local_mins[-1]]
+                    else:
+                        pos2 = self.__gear_cnt[indx2+self.gear_local_mins[-1]-len(self.gear_dists)]
+                else:
+                    pos1 = self.__gear_cnt[self.gear_local_mins[i]+indx1]
+                    pos2 = self.__gear_cnt[self.gear_local_mins[i]+indx2]
+                    
+                self.pitch_thickness_lst.append(dist(pos1[0],pos2[0])*self.pixel2mm)
+            else:
+                self.pitch_thickness_lst.append(0)
+        
+        print(self.apendum_thickness_lst)
+        print(self.pitch_thickness_lst)
+        print(self.dedundum_thickness_lst)
 
     def process(self,savgolWindowLength=None):
         self.NO_GEAR_ERROR = False
@@ -68,7 +169,7 @@ class image_processor:
 
     def set_pixel2mm(self,k,calbrtn_param = []):
         if(len(calbrtn_param) == 0): # using diameter for pixel2mm constant calsulation
-            self.pixel2mm = k/(self.outside_diameter*2)
+            self.pixel2mm = k/(self.outside_diameter)
         else: # using caliberation constants
             self.pixel2mm = 0
             for i in range(len(calbrtn_param)):
@@ -76,13 +177,6 @@ class image_processor:
         self.outside_diameter = self.outside_diameter*self.pixel2mm
         self.root_diameter = self.pixel2mm*self.root_diameter
         self.PIXEL2MM_UNSET = False
-
-
-    def get_profile_mm(self):
-        if(self.pixel2mm == 0):
-            self.PIXEL2MM_UNSET = True
-            return 0
-        return self.gear_teeth_profiles*self.pixel2mm
 
     def compare_with_cad(self,gear_profile = None,threshold = 1):
         if(self.is_CAD_Image):
@@ -137,6 +231,8 @@ class image_processor:
             self.savgolWindowLength = savgolWindowLength
         self.gear_dists = np.array(savgol_filter(gd, window_length=self.savgolWindowLength, polyorder=1, mode="nearest")) ## filtering the outer profile
         seperator = self.__get_seperator() ## getting seperater between root and outer diameter
+
+
         minimas,temp1,ind,temp2 = [],[],[],[] ## getting minimas from the profile
         for i in range(len(self.gear_dists)):
             if self.gear_dists[i]<seperator:
@@ -151,6 +247,8 @@ class image_processor:
             minimas,ind = minimas[1:],ind[1:]
         for i in range(len(minimas)):
             self.gear_local_mins.append(ind[i][np.argmin(minimas[i])])
+
+
         self.gear_count = len(self.gear_local_mins)
         if(self.is_CAD_Image):
             self.gear_teeth_profiles = self.gear_dists[self.gear_local_mins[0]:self.gear_local_mins[1]]
@@ -178,13 +276,13 @@ class image_processor:
         if(centroids[0]>centroids[1]):
             minim = min(self.gear_dists[c1])
             maxim = max(self.gear_dists[c2])
-            self.outside_diameter = centroids[0]
-            self.root_diameter = centroids[1]
+            self.outside_diameter = centroids[0]*2
+            self.root_diameter = centroids[1]*2
         else:
             minim = min(self.gear_dists[c2])
             maxim = max(self.gear_dists[c1])
-            self.outside_diameter = centroids[1]
-            self.root_diameter = centroids[0]
+            self.outside_diameter = centroids[1]*2
+            self.root_diameter = centroids[0]*2
         seperator = (minim + maxim)/2
         # plt.figure(figsize=(20, 10), dpi=100)
         # plt.plot(self.gear_dists,color='green')
@@ -194,27 +292,12 @@ class image_processor:
         # plt.show()
         return seperator
 
+            
 
-# if(__name__ == "__main__"):
-    # frame = cv2.imread("E:\Official_projects\Gear_analysis\src\data\Test_images\Final.png")
-    # # frame2 = cv2.imread("E:\Official_projects\Gear_analysis\src\data\Test_images\Screenshot 2023-02-23 192615.png")
-    # gear = image_processor(frame)
-    # gear.process()
-    # # cad = image_processor(frame2,True)
-    # # cad.process()
-    
-    # # fram_arcuo = cv2.imread("E:\Official_projects\Gear_analysis\src\data\Test_images\img.jpg")
-    # # c = caliberate_device()
-    # # c.ids_order = [1,2]
-    # # c.heights = [10,15]
-    # # c.curve_order =1
-    # # param = c.caliberate(fram_arcuo)
-    
-    
-    # # cad.set_pixel2mm(50)
-    # # gear.process()
-    # # gear.set_pixel2mm(50)
-    # # print(gear.pixel2mm)
-    # # gear.set_pixel2mm(12,param)
-    # # print(gear.pixel2mm)
-    # # gear.compare_with_cad(cad.get_profile_mm(),0.1)
+if(__name__ == "__main__"):
+    frame = cv2.imread("E:\Official_projects\Gear_analysis\src\data\Test_images\Test_single_gear\WIN_20230302_13_42_01_Pro.jpg")
+    gear = image_processor()
+    gear.set_frame(frame)
+    gear.process()
+    gear.set_pixel2mm(51)
+    gear.get_teeth_metrices()

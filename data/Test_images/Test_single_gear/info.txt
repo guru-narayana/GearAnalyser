@@ -1,0 +1,3 @@
+gear cad/real diameter 12mm
+gear height 6mm
+

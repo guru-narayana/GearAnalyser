@@ -2,6 +2,7 @@ import customtkinter
 import PIL.Image
 import PIL.ImageTk
 from tkinter import *
+from tkinter import ttk
 from tkinter import filedialog
 import cv2
 import numpy as np
@@ -109,30 +110,40 @@ class Gear_analyser(customtkinter.CTk):
         self.diam_height_mm_entry = customtkinter.CTkEntry(master=self, placeholder_text="value in mm",width=90)
         self.diam_height_mm_entry.place(x=130, y=128)
 
+
+
+
+        self.usingdiam_pitch_label = customtkinter.CTkLabel(master=self, text="Pitch Diameter : ",width=60,height=25,fg_color=("white", "gray17"),font=("Heebo", 14))
+        self.usingdiam_pitch_label.place(x=20, y=128+42)
+        self.pitch_diam_height_mm_entry = customtkinter.CTkEntry(master=self, placeholder_text="value in mm",width=90)
+        self.pitch_diam_height_mm_entry.place(x=130, y=128+42)
+
+
         self.savgol_switch_var = customtkinter.StringVar(value="off")
         self.savgol_switch_1 = customtkinter.CTkSwitch(master=self, text="Savgol window : ", command=self.savgol_wntry_switch_event,
                                    variable=self.savgol_switch_var, onvalue="on", offvalue="off")
-        self.savgol_switch_1.place(x=10, y=167)
+        self.savgol_switch_1.place(x=10, y=167+42)
 
         self.savgol_entry = customtkinter.CTkEntry(master=self, placeholder_text="value",width=70)
-        self.savgol_entry.place(x=160, y=167)
+        self.savgol_entry.place(x=160, y=167+42)
         self.savgol_entry.configure(state="disabled")
 
         self.adaptiveThresholdKernel_switch_var = customtkinter.StringVar(value="off")
         self.adaptiveThresholdKernel_switch_1 = customtkinter.CTkSwitch(master=self, text="adaptiveTKernel : ", command=self.adaptiveThresholdKernel_wntry_switch_event,
                                    variable=self.adaptiveThresholdKernel_switch_var, onvalue="on", offvalue="off")
-        self.adaptiveThresholdKernel_switch_1.place(x=10, y=204)
+        self.adaptiveThresholdKernel_switch_1.place(x=10, y=246)
 
         self.adaptiveThresholdKernel_entry = customtkinter.CTkEntry(master=self, placeholder_text="901",width=70)
-        self.adaptiveThresholdKernel_entry.place(x=160, y=204)
+        self.adaptiveThresholdKernel_entry.place(x=160, y=246)
         self.adaptiveThresholdKernel_entry.configure(state="disabled")
+        
 
-        self.process_image_btn = customtkinter.CTkButton(master=self, text="Process", command=self.process_image,font=("Heebo", 14),width=120)
-        self.process_image_btn.place(x=50,y=170+66+10)
+        self.process_image_btn = customtkinter.CTkButton(master=self, text="Process", command=self.process_image,font=("Heebo", 14),width=100)
+        self.process_image_btn.place(x=15,y=206+66+10)
 
         self.caliberated = False
-        self.caliberate_image_btn = customtkinter.CTkButton(master=self, text="Caliberate", command=self.caliberate,font=("Heebo", 14),width=120)
-        self.caliberate_image_btn.place(x=50,y=206+66+10)
+        self.caliberate_image_btn = customtkinter.CTkButton(master=self, text="Caliberate", command=self.caliberate,font=("Heebo", 14),width=100)
+        self.caliberate_image_btn.place(x=125,y=206+66+10)
 
         ### compare
 
@@ -183,6 +194,60 @@ class Gear_analyser(customtkinter.CTk):
         self.stitch_images_btn.place(x=55,y=660)
 
 
+
+        ## table control
+        self.generate_table1()
+
+    def generate_table1(self):
+        style = ttk.Style()
+        style.theme_use("default")
+        style.configure("Treeview",
+                        background="#494949",
+                        fieldbackground="#494949",
+                        rowheight=25,
+                        foreground="white"
+                        )
+        style.map('Treeview',background="white")
+
+        treev = ttk.Treeview(self, selectmode ='browse',height=9) 
+        treev.place(x=260,y = 420+35)
+        treev.configure(style="Treeview")
+        
+        treev["columns"] = ("1", "2", "3","4","5")
+        treev['show'] = 'headings'
+
+        label1 = Label(self, text="Teeth S.N.", bg='#494949',borderwidth=1, relief="ridge",fg= "white",font=("Arial", 8))
+        label1.place(x=261,y=408+35,height=34,width=80)
+        
+        label2 = Label(self, text="Dedundum\n Thickness", bg='#494949',borderwidth=1, relief="ridge",fg= "white",font=("Arial", 8))
+        label2.place(x=261+80,y=408+35,height=34,width=80)
+        
+        label3 = Label(self, text="Tooth\n Thickness", bg='#494949',borderwidth=1, relief="ridge",fg= "white",font=("Arial", 8))
+        label3.place(x=261+160,y=408+35,height=34,width=80)
+        
+        label3 = Label(self, text="Addendum\n Thickness", bg='#494949',borderwidth=1, relief="ridge",fg= "white",font=("Arial", 8))
+        label3.place(x=261+240,y=408+35,height=34,width=80)
+        
+        label3 = Label(self, text="Error\n with CAD", bg='#494949',borderwidth=1, relief="ridge",fg= "white",font=("Arial", 8))
+        label3.place(x=261+320,y=408+35,height=34,width=82)
+
+        treev.column("1", width = 80, anchor ='c')
+        treev.column("2", width = 80, anchor ='c')
+        treev.column("3", width = 80, anchor ='c')
+        treev.column("4", width = 80, anchor ='c')
+        treev.column("5", width = 80, anchor ='c')
+        
+        # treev.heading("1", text ="Teeth S.N.")
+        # treev.heading("2", text ="Dedundum Thickness")
+        # treev.heading("3", text ="Tooth Thickness")
+        # treev.heading("4", text ="Addendum Thickness")
+        # treev.heading("5", text ="Error")
+
+        # treev.insert("", 'end',values =("Nidhi", "F", "25","5"))
+        # treev.insert("", 'end',values =("Nidhi", "F", "25","5"))
+        # treev.insert("", 'end',values =("Nidhi", "F", "25","5"))
+        # treev.insert("", 'end',values =("Nidhi", "F", "25","5"))
+        # treev.insert("", 'end',values =("Nidhi", "F", "25","5"))
 
     def stitch_images(self):
         self.update_status(1)
@@ -327,6 +392,13 @@ class Gear_analyser(customtkinter.CTk):
             self.processor.set_pixel2mm(float(self.diam_height_mm_entry.get()),self.caliberation_params)
         else:
             self.processor.set_pixel2mm(float(self.diam_height_mm_entry.get()))
+        
+
+        if(self.pitch_diam_height_mm_entry.get() == ""):
+            self.processor.pitch_diameter = 0
+        else:
+            self.processor.pitch_diameter = float(self.pitch_diam_height_mm_entry.get())
+
         
         self.processed_frame = self.processor.image_with_edges
         self.original_image_processed = True

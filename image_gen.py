@@ -18,12 +18,12 @@ for i in range(150):
 filename = "E:\Official_projects\Gear_analysis\src\data\Test_images\clock-face2.png"
 cv2.imwrite(filename, img)
 
-
 stretch_near = cv2.resize(img, (780, 780),
                interpolation = cv2.INTER_LINEAR)
-# cv2.imshow('dark', stretch_near)
-  
-# Allows us to see image
-# until closed forcefully
+
+#cv2.imshow('dark', stretch_near)
+#Allows us to see image
+#until closed forcefully
+
 cv2.waitKey(0)
 cv2.destroyAllWindows()
